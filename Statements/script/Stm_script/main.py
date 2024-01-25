@@ -3,16 +3,37 @@ import sys
 from telnetlib import theNULL
 
 
-months =[["Jan ","01"],
-         ["Feb ","02"],
-         ["Dec ","12"]]
+months ={"Jan":"01",
+         "Feb":"02",
+         "Mar":"03",
+         "Apr":"04",
+         "May":"05",
+         "Jun":"06",
+         "Jul":"07",
+         "Aug":"08",
+         "Sep":"09",
+         "Oct":"10",
+         "Nov":"11",
+         "Dec":"12",
+        }
+
+new_stm=""
+
+#===============================================================================
+# month_pattern = '|'.join(months)
+# print(month_pattern)    
+#===============================================================================
 
 
 with open(sys.argv[1],'r') as stm:
-    new_stm = stm.read()
-    
-    #Look for lines    
-    print(re.sub(r"(?P<line>\bDec.\b)","\g<line>", new_stm, flags=re.M))
+    file_lines = stm.readlines()
+     
+    for lines in file_lines:
+        #Process line by line to look for dates 
+        data = re.search(rf"(?P<line>\b({'|'.join(months)}).*\b)", lines, flags=re.M)
+        if data != None:                    
+            if (date := re.search(r'[^\s]+',data.group(0))) != None:                         
+                new_stm += re.sub(r'[^\s]+',months[date.group(0)] ,data.group(0), count=1)  + '\n'                
     
     
 #===============================================================================
@@ -34,5 +55,8 @@ with open(sys.argv[1],'r') as stm:
 #     new_stm = space.sub(r"\g<digit>,",new_stm)
 #     
 #===============================================================================
-    
+
 print (new_stm)
+ 
+ 
+ 
