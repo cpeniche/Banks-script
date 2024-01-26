@@ -2,6 +2,15 @@ import re
 import sys
 from telnetlib import theNULL
 
+import tabula
+from tabula import read_pdf
+from tabulate import tabulate
+import pandas
+ 
+#reads table from pdf file
+
+
+
 
 months ={"Jan":"01",
          "Feb":"02",
@@ -18,23 +27,36 @@ months ={"Jan":"01",
         }
 
 new_stm=""
+area = [70, 30, 750, 570]
 
-#===============================================================================
-# month_pattern = '|'.join(months)
-# print(month_pattern)    
-#===============================================================================
+df = tabula.read_pdf(sys.argv[1], guess=False, lattice=False, 
+                 stream=True, multiple_tables=False, area=area, pages="2") 
 
+ofile = open('output.txt','w')
 
-with open(sys.argv[1],'r') as stm:
+orig_stdout = sys.stdout
+sys.stdout = ofile
+print(df)
+sys.stdout = orig_stdout
+ofile.close()
+
+month_pattern = '|'.join(months)
+
+with open('output.txt','r') as stm:
     file_lines = stm.readlines()
-     
+      
     for lines in file_lines:
         #Process line by line to look for dates 
-        data = re.search(rf"(?P<line>\b({'|'.join(months)}).*\b)", lines, flags=re.M)
-        if data != None:                    
-            if (date := re.search(r'[^\s]+',data.group(0))) != None:                         
-                new_stm += re.sub(r'[^\s]+',months[date.group(0)] ,data.group(0), count=1)  + '\n'                
-    
+        #data = re.search(rf"(?P<line>\b({'|'.join(months)}).*\b)", lines, flags=re.M)
+        data = re.search(r"(?P<line>\A[0-9]+/.*\b)", lines, flags=re.M)
+        if data != None:      
+            new_stm = new_stm + data.group(0) + '\n'              
+            #===================================================================
+            # if (date := re.search(r'(?P<date>[^\s]+',data.group(0))) != None:                         
+            #     new_stm += re.sub(r'[^\s]+',months[date.group(0)] ,data.group(0), count=1)  + '\n'                
+            #===================================================================
+    #Add year
+    new_stm = re.sub(r'(?P<date>[0-9]{,2}/[0-9]{,2}[^\s]+)','\g<date>/2022,',new_stm,flags=re.M)
     
 #===============================================================================
 #     for i in range(len(months)):        
