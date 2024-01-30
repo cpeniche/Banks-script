@@ -93,10 +93,10 @@ class Statement(object):
                         if isinstance(rows[i],str): 
                             #Remove coma from the numbers
                             rows[i] = re.sub(r',','',rows[i])
-                            minus=""
+                            minus="-"
                             #Numbers in the credit column should be negative
                             if i == "col_2":
-                                minus="-"                        
+                                minus=""                        
                             self.new_stmt.loc[index][i] = re.sub(self.find_numbers
                                                         ,rf',{minus}$\g<0>',rows[i])
                     
@@ -110,7 +110,7 @@ class Statement(object):
             
     def get_string(self):
         if self.new_stmt.empty == False:
-            temp_str=re.sub(r'\bcol.*',"",self.new_stmt.to_string(index=False)) 
+            temp_str=re.sub(r'\bcol.*\n',"",self.new_stmt.to_string(index=False)) 
             temp_str=re.sub(r'NaN',"",temp_str)
             for line in temp_str.split('\n'):
                 self.stm_as_string += re.sub(r'^\s+',"",line)+'\n'
