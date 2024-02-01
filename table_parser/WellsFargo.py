@@ -15,15 +15,17 @@ import fitz
 class Statement(object):
     
   
-    columns=[]  
-    area = [70, 30, 750, 570]
-    table_page=2
+    columns=[]         
+    init_table_mark_position=[]
+    end_table_mark_position=[]
     columns_to_drop=["col_4"]
     find_date=r'\A[0-9]{1,2}/[0-9]{1,2}'
     find_numbers=r'[0-9]*[0-9]+\.[0-9]*'
     raw_stmt=pd.DataFrame()
     new_stmt=pd.DataFrame()
     stm_as_string =""
+    init_table_mark = "Transaction history"
+    end_table_mark ="Totals"
     
     
     def __init__(self, date):
@@ -33,25 +35,32 @@ class Statement(object):
     def open(self,file): 
         
         pdf_document = fitz.open(file)
-        search_text = 'Transaction history'
-        for page in pdf_document:
-            text_instances = page.search_for(search_text)
-            for text_instance in text_instances:
-                self.area[0]=int(text_instance.y0)
-                self.area[1]=int(text_instance.x0)
-                break;
         
-        search_text = 'Totals'
+        #look for first marker on pages, if the table is bigger than one page two or more
+        #markers will be find         
         for page in pdf_document:
-            text_instances = page.search_for(search_text)
+            text_instances = page.search_for(self.init_table_mark)        
             for text_instance in text_instances:
-                self.area[3]=570
-                self.area[2]=int(text_instance.y0)
-                break;
-            
-        #Open raw pdf file on the specified area       
-        self.raw_stmt=read_pdf(file, guess=False, lattice=False, stream=True, 
-                       multiple_tables=False, area=self.area, pages=self.table_page)[0]
+                self.init_table_mark_position.append({"page":page.number,
+                                                      "x0":int(text_instance.x0),
+                                                      "y0":int(text_instance.y0),
+                                                      "x1":int(page.mediabox_size.x),
+                                                      "y1":int(page.mediabox_size.y)
+                                                      })
+                
+        #look for the unique end marker (hopefully)                                                    
+        for page in pdf_document:
+            text_instances = page.search_for(self.end_table_mark)
+            for text_instance in text_instances:
+                self.end_table_mark_position.append({"page":page.number,"x0":int(text_instance.x0),"y0":int(text_instance.y0)})
+                
+        self.init_table_mark_position[-1]["y1"] = self.end_table_mark_position[0]["y0"]    
+                                        
+        #Open raw pdf file on the specified area
+        for table in self.init_table_mark_position:       
+            self.raw_stmt=read_pdf(file, guess=False, lattice=False, stream=True,multiple_tables=False,
+                                   area = [table["y0"], table["x0"], table["y1"], table["x1"]], pages = table["page"]+1)[0]
+            print(self.raw_stmt)
                        
         #print(self.raw_stmt.to_string())
                        
