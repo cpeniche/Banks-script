@@ -1,8 +1,9 @@
 '''
-Created on Jan 29, 2024
+Created on Feb 2, 2024
 
 @author: carlo
 '''
+
 import re
 import pandas as pd
 import tabula
@@ -11,23 +12,24 @@ from zoneinfo import _tzpath
 from tabula import read_pdf
 import fitz
 
-
 class Statement(object):
     
   columns = []         
   init_table_mark_position = []
   end_table_mark_position = []
-  columns_to_drop = ["col_4"]
+  columns_to_drop = [1,3,4,6]
   find_date = r'\A[0-9]{1,2}/[0-9]{1,2}'
   find_numbers = r'[0-9]*[0-9]+\.[0-9]*'
   raw_table_list = []
   new_table_list = []
   stm_as_string = ""
-  init_table_mark = "Transaction history"
-  end_table_mark = "Totals"
-  
+  init_table_mark = "Reference"
+  end_table_mark = "Total Interest charged for this period"
+
+
   def __init__(self, date):
     self.date = date
+  
   
   def open(self, file): 
       
@@ -39,7 +41,7 @@ class Statement(object):
       text_instances = page.search_for(self.init_table_mark)        
       for text_instance in text_instances:
           self.init_table_mark_position.append({"page":page.number,
-                                                "x0":int(text_instance.x0),
+                                                "x0":0,#int(text_instance.x0),
                                                 "y0":int(text_instance.y0),
                                                 "x1":int(page.mediabox_size.x),
                                                 "y1":int(page.mediabox_size.y)
@@ -65,9 +67,12 @@ class Statement(object):
                             area=[table["y0"], table["x0"], table["y1"], table["x1"]],
                             pages=table["page"] + 1)[0]})
         
+    #===========================================================================
     # for table in self.raw_table_list: 
-    #   print(table["table"])
-                         
+    #   print(table["table"].to_string())
+    #===========================================================================
+      
+      
   def parse(self):
       
     new_table = []
@@ -75,7 +80,7 @@ class Statement(object):
     for tbl_idx, table in enumerate(self.raw_table_list): 
       if len(table["table"].columns) < 3:
         return False
-            
+      
       #print(table["table"].columns)  
             
       temp = table["table"]
@@ -89,7 +94,7 @@ class Statement(object):
                     
       new_table[tbl_idx].columns = self.columns          
             
-      #print(new_table[tbl_idx].columns)    
+      #print(new_table[tbl_idx].columns)   
             
       # iterate over rows        
       for index, rows in new_table[tbl_idx].iterrows(): 
@@ -106,16 +111,16 @@ class Statement(object):
                 rows[self.columns[0]] = re.sub(self.find_date, rf'\g<0>/{self.date},', rows[self.columns[0]])
                 new_table[tbl_idx].loc[index]["col_0"] = rows[self.columns[0]]
                 new_table[tbl_idx].loc[index]["col_1"] = rows[self.columns[1]]
-                for i in itertools.islice(self.columns, 2, len(self.columns) - 1): 
-                    if isinstance(rows[i], str): 
-                        # Remove coma from the numbers
-                        rows[i] = re.sub(r',', '', rows[i])
-                        minus = "-"
-                        # Numbers in the credit column should be negative
-                        if i == "col_2":
-                            minus = ""                        
-                        new_table[tbl_idx].loc[index][i] = re.sub(self.find_numbers
-                                                    , rf',{minus}$\g<0>', rows[i])
+                
+                # Remove coma from the numbers                
+                if isinstance(rows[self.columns[2]], str):
+                  if re.search(r"\A0.00", rows[self.columns[2]]) == None:
+                    rows[self.columns[2]] = re.sub(r',', '', rows[self.columns[2]])                                                                                  
+                    new_table[tbl_idx].loc[index][self.columns[2]] = re.sub(self.find_numbers
+                                                      ,r',$\g<0>', rows[self.columns[2]])
+                  else:
+                    #drop rows with zero values in the amount
+                    new_table[tbl_idx] = new_table[tbl_idx].drop(index=index)
                                     
         else:
           new_table[tbl_idx] = new_table[tbl_idx].drop(index=index)
@@ -144,4 +149,3 @@ class Statement(object):
     self.stm_as_string = ''
     self.init_table_mark_position.clear()
     self.end_table_mark_position.clear()
-    
