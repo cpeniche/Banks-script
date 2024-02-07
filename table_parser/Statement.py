@@ -17,6 +17,10 @@ class Statement(object):
   end_marker_coordinates=[]
   raw_table_list = []
   new_table_list = []
+  find_date = {'numbers':r'\A[0-9]{1,2}/[0-9]{1,2}',
+               'letters':r'\A'
+               }
+  stm_as_string = ""
 
   def __init__(self, date):
     self.date = date
@@ -40,7 +44,7 @@ class Statement(object):
   def open(self, file, commands): 
       
     
-    pdf_document = fitz.open(file[0])
+    pdf_document = fitz.open(file)
     
     # look for first marker on pages, if the table is bigger than one page two or more
     # markers will be find         
@@ -55,7 +59,7 @@ class Statement(object):
                                     
     # Open raw pdf file on the specified area
     for idx, table in enumerate(self.header_coordinates):       
-      self.raw_table_list.append({"index":idx, "table": read_pdf(file[0],
+      self.raw_table_list.append({"index":idx, "table": read_pdf(file,
                       guess=False,
                       lattice=False,
                       stream=True,
@@ -77,11 +81,9 @@ class Statement(object):
         table["table"].columns = commands['Table Header']
             
       temp = table["table"]
-      print(temp.columns)
-      
+           
       # drop undesired columns    
-      temp.drop(columns=commands["Drop"],inplace=True)
-      print(temp.columns)         
+      temp.drop(columns=commands["Drop"],inplace=True)        
       new_table.append(temp)   
       
       # Change name to columns
@@ -90,49 +92,47 @@ class Statement(object):
           new_table[tbl_idx].columns = commands['Rename']  
         else:
           return False;
-                                          
-      print(new_table[tbl_idx].columns)    
-            
-      # iterate over rows        
-      for index, rows in new_table[tbl_idx].iterrows(): 
-        if isinstance(rows[self.columns[0]], str): 
-        # look for row with date 
-            if re.search(self.find_date, rows[self.columns[0]]) == None:
-                # we drop row without date information
-                new_table[tbl_idx] = new_table[tbl_idx].drop(index=index)  
-            else:
-                # Add year to the date
-                rows[self.columns[1]] = re.sub(r',', '', rows[self.columns[1]])
-                rows[self.columns[1]] = re.sub(r'\A\s*', '', rows[self.columns[1]])
-                
-                rows[self.columns[0]] = re.sub(self.find_date, rf'\g<0>/{self.date},', rows[self.columns[0]])
-                new_table[tbl_idx].loc[index]["col_0"] = rows[self.columns[0]]
-                new_table[tbl_idx].loc[index]["col_1"] = rows[self.columns[1]]
-                for i in itertools.islice(self.columns, 2, len(self.columns) - 1): 
-                    if isinstance(rows[i], str): 
-                        # Remove coma from the numbers
-                        rows[i] = re.sub(r',', '', rows[i])
-                        minus = "-"
-                        # Numbers in the credit column should be negative
-                        if i == "col_2":
-                            minus = ""                        
-                        new_table[tbl_idx].loc[index][i] = re.sub(self.find_numbers
-                                                    , rf',{minus}$\g<0>', rows[i])
-                                    
-        else:
-          new_table[tbl_idx] = new_table[tbl_idx].drop(index=index)
-        
+                                                
+      new_table[tbl_idx] = self.drop_unused_rows(new_table[tbl_idx],commands) 
+      new_table[tbl_idx] = self.remove_comas(new_table[tbl_idx])  
+      
+      print(new_table[tbl_idx])   
       self.new_table_list.append(new_table[tbl_idx])
-      self.columns.clear()
-            
+                
     return True
+  
+  def drop_unused_rows(self,table,commands): 
+    regex = self.find_date[commands["Date Format"][0]]   
+    for index, rows in table.iterrows():
+      if isinstance(rows["Date"], str) == True:
+        if re.search(regex, rows["Date"]) == None:                            
+        # we drop rows without date information
+          table = table.drop(index=index)
+        else:
+        #Add year and comma
+          table.loc[index,"Date"]=re.sub(regex,rf'\g<0>/{self.date}',rows["Date"])
+      else:
+          table = table.drop(index=index)  
+    return table 
+  
+  def remove_comas(self, table):
+    for index , rows in table.iterrows():
+      for col in itertools.islice(table.columns, 1, len(table.columns)):
+        if isinstance(rows[col], str) == True:
+          table.loc[index,col]=re.sub(r',',r'', rows[col])
+          table.loc[index,col]=re.sub(r'\A.*',r',\g<0>', rows[col]) 
+        else:
+          table.loc[index,col]=",0.00" 
+    return table      
           
-  def get_string(self):
+  def get_string(self, add_header):
     
     for table in self.new_table_list:
       if table.empty == False:
-        temp_str = re.sub(r'\bcol.*\n', "", table.to_string(index=False)) 
-        temp_str = re.sub(r'NaN', "", temp_str)
+        if add_header:
+          temp_str = re.sub(r'\w+\s*', r'\g<0>,', table.to_string(index=False), len(table.columns)-1)
+        else:
+          temp_str = re.sub(r'\A.*\n',"", table.to_string(index=False), 1)              
         for line in temp_str.split('\n'):
           self.stm_as_string += re.sub(r'^\s+', "", line) + '\n'                
       else:
@@ -142,8 +142,8 @@ class Statement(object):
   def clear(self):
     self.raw_table_list.clear()
     self.new_table_list.clear()    
-    self.columns.clear()
+    self.header_coordinates.clear()
     self.stm_as_string = ''
-    self.init_table_mark_position.clear()
-    self.end_table_mark_position.clear()
+    self.end_marker_coordinates.clear()
+    
     

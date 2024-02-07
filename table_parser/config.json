@@ -2,5 +2,6 @@
 "Table Header":["Date","Number","Description","Additions","Subtractions","balance"],
 "Table End":["Totals"],
 "Drop":["Number","balance"],
-"Rename":["Date","Description","Credits","Debits"]
+"Rename":["Date","Description","Credits","Debits"],
+"Date Format":["numbers"]
 }

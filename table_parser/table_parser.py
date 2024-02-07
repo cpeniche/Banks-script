@@ -30,7 +30,7 @@ def main():
   args=create_arguments(parser)
    
   #Read all files in the directory
-  if args.filename == '*':  
+  if args.filename[0][0] == "all":  
     file_list = Path(args.directory).rglob('*.pdf')
   else:
     for file in args.filename:      
@@ -47,30 +47,13 @@ def main():
     print("-----------" + str(file) + "---------------") 
     
     Stmt = Bank.Statement(args.year)
-    Stmt.open(file_list,commands)    
+    Stmt.open(str(file),commands)    
     if Stmt.parse(commands) == True:
-      file_data += Stmt.get_string()
+      file_data += Stmt.get_string(file_data=="")
     else:
       file_data += "\n**************** Error at file : " + str(file) + "*****************\n"
-    # print(file_data)
-    Stmt.clear()
-  #=============================================================================
-  # ofile = open(sys.argv[1] + "/" + str(year) + '_transactions.csv', 'w')  
-  # ofile.write(file_data) 
-  # ofile.close()   
-  # else:
-  #   if sys.argv[3] == WF:
-  #     Stmt = WF.Statement(year)
-  #   else:
-  #     Stmt = Bofa.Statement(year) 
-  #   Stmt.open(file)
-  #   Stmt.parse()        
-  #   file_data = Stmt.get_string()
-  #   ofile = open(sys.argv[1] + '.csv', 'w')  
-  #   ofile.write(file_data) 
-  #   ofile.close() 
-  #=============================================================================
-        
+    print(file_data)
+    Stmt.clear()      
     print("Parser done")
     
 
