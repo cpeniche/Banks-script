@@ -80,19 +80,18 @@ class Statement(object):
       else:
         table["table"].columns = commands['Table Header']
             
-      temp = table["table"]
-           
-      # drop undesired columns    
-      temp.drop(columns=commands["Drop"],inplace=True)        
-      new_table.append(temp)   
+      new_table.append(table["table"])
       
-      # Change name to columns
+      # Change name of columns
       if 'Rename' in commands.keys():
         if len(commands['Rename']) == len(new_table[tbl_idx].columns):
           new_table[tbl_idx].columns = commands['Rename']  
         else:
           return False;
-                                                
+           
+      # drop undesired columns    
+      new_table[tbl_idx].drop(columns=commands["Drop"],inplace=True)        
+                                                           
       new_table[tbl_idx] = self.drop_unused_rows(new_table[tbl_idx],commands) 
       new_table[tbl_idx] = self.remove_comas(new_table[tbl_idx])  
       

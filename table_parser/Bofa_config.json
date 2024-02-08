@@ -1,0 +1,7 @@
+{
+"Table Header":["Date","Date","Description","Number","Number","Amount","Total"],
+"Table End":["TOTAL INTEREST CHARGED FOR THIS PERIOD"],
+"Rename":["Date","Date2","Description","Number","Number2","Amount","Total"],
+"Drop":["Date2","Number","Number2","Total"],
+"Date Format":["numbers"]
+}

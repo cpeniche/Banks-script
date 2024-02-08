@@ -16,9 +16,10 @@ def create_arguments(parser):
   parser.add_argument('-f','--filename', required=True, help='file name or * for all file in the directory',
                       nargs='+', action='append')
   parser.add_argument('-d','--directory', required=False, help='Directory path of pdf files',
-                      default = "./")
+                      default = ".")
   parser.add_argument('-c','--config',required=True, help='Command specification for document parse')
   parser.add_argument('-y','--year', required=True, help="statements year")
+  parser.add_argument('-o','--output',default="output.cvs", help="Output file name")
   
   return parser.parse_args()
 
@@ -31,10 +32,14 @@ def main():
    
   #Read all files in the directory
   if args.filename[0][0] == "all":  
-    file_list = Path(args.directory).rglob('*.pdf')
+    gen_file_list = sorted(Path(args.directory).rglob('*.pdf'))
+    for file in gen_file_list:
+      file_list.append(str(file))
+    
+    print(type(file_list))
   else:
     for file in args.filename:      
-      file_list.append(args.directory+ '/' + file[0])
+      file_list.append(args.directory+ '/' + file[0])      
   
   
   #Read config file
@@ -42,19 +47,22 @@ def main():
   commands = json.loads(config_file.read())
         
   file_data = ""
-             
+  Stmt = Bank.Statement(args.year)           
   for file in file_list:
     print("-----------" + str(file) + "---------------") 
-    
-    Stmt = Bank.Statement(args.year)
+
     Stmt.open(str(file),commands)    
     if Stmt.parse(commands) == True:
       file_data += Stmt.get_string(file_data=="")
     else:
-      file_data += "\n**************** Error at file : " + str(file) + "*****************\n"
-    print(file_data)
+      file_data += "\n**************** Error at file : " + str(file) + "*****************\n"   
     Stmt.clear()      
-    print("Parser done")
+  file=open(args.directory+'/'+args.output,'w')
+  file.write(file_data)
+  file.close()
+  
+  
+  print("****** Parser done **********")
     
 
 if __name__ == '__main__':
