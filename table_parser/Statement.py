@@ -54,8 +54,9 @@ class Statement(object):
         self.search_for_header(commands["Table Header"],block,page,self.header_coordinates)
         self.search_for_header(commands["Table End"],block,page,self.end_marker_coordinates)                           
         
-                                                                  
-    self.header_coordinates[-1]["y1"] = self.end_marker_coordinates[0]["y0"]    
+    
+    if self.header_coordinates != [] and self.end_marker_coordinates != []:                                                              
+      self.header_coordinates[-1]["y1"] = self.end_marker_coordinates[0]["y0"]    
                                     
     # Open raw pdf file on the specified area
     for idx, table in enumerate(self.header_coordinates):       
